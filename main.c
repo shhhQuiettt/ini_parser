@@ -22,6 +22,9 @@ short is_section(char *line) {
 }
 
 // moves section name extracted from line to section_container
+//          line:        section_container:
+// Example: [abc]\n  ->  abc
+// Don't ask me how it works
 void *extract_section(char *line_buff, char *section_container) {
   strncpy(section_container, line_buff + 1, strlen(line_buff) - 3);
   section_container[strlen(line_buff) - 3] = '\0';
