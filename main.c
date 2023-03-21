@@ -58,6 +58,8 @@ int main() {
         while (fscanf(fp, "%s = %s\n", current_key, current_value) != EOF) {
           if (strcmp(current_key, key) == 0) {
             printf("key found: %s\n", current_key);
+            printf("value: %s\n", current_value);
+
           }
         }
       }
