@@ -1,7 +1,7 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 FILE *open_file(char *filename) {
   FILE *fp;
@@ -25,7 +25,8 @@ short is_valid_identifier(char *identifier) {
 }
 
 short is_section(char *line) {
-  return (line[0] == '[' && line[strlen(line) - 2] == ']') ? 1 : 0;
+  ushort end_offset = line[strlen(line) - 1] == '\n' ? 2 : 1;
+  return (line[0] == '[' && line[strlen(line) - end_offset] == ']') ? 1 : 0;
 }
 
 // moves section name extracted from line to section_container
@@ -42,7 +43,7 @@ int main() {
   char *filename = "example.ini";
   // looking for
   char section[31] = "slippery-balance";
-  char key[31] = "buttery-profileee";
+  char key[31] = "harsh-officer";
 
   char current_section[31];
   char current_key[31];
@@ -61,7 +62,9 @@ int main() {
       extract_section(line_buff, current_section);
 
       if (strcmp(current_section, section) == 0) {
-        while (fscanf(fp, "%s = %s\n", current_key, current_value) > 0) {
+        while (fscanf(fp, "%s = %s\n", current_key, current_value) > 0 &&
+               !is_section(current_key)) {
+
           if (strcmp(current_key, key) == 0) {
             printf("Value: %s\n", current_value);
             return 0;
