@@ -18,7 +18,26 @@ struct Section {
   char *name;
   struct Section *next;
   struct Record *records;
+  int number_of_records;
 };
+
+void printIniData(struct Section *head) {
+  struct Section *current_section = head;
+
+  while (current_section != NULL) {
+    printf("Section: %s\n", current_section->name);
+    printf("Number of records: %d\n", current_section->number_of_records);
+
+    {
+      for (int i = 0; i < current_section->number_of_records; ++i) {
+        printf("Key: %s, Value: %s\n", current_section->records[i].key,
+               current_section->records[i].value);
+      }
+    }
+    current_section = current_section->next;
+    printf("\n");
+  }
+}
 
 struct Lookup *getDataFromArgs(int size, char *argv[]) {
   struct Lookup *data;
@@ -117,7 +136,10 @@ struct Record *parse_key_value(char *line_buff) {
     exit(1);
   }
 
-  // Remove trailing whitespace
+  // Removing line break
+  current_value[strlen(current_value) - 1] = '\0';
+
+  // Removing trailing whitespace
   current_value += 1;
 
   record->value = malloc(sizeof(char) * strlen(current_value) + 1);
@@ -133,10 +155,6 @@ int main(int argc, char **argv) {
   struct Section *ini_data = malloc(sizeof(struct Section));
 
   char *current_section_name = NULL;
-  size_t current_section_size = 0;
-
-  char *current_key;
-  char *current_value;
 
   FILE *fp;
 
@@ -150,9 +168,9 @@ int main(int argc, char **argv) {
   while (getline(&line_buff, &line_buff_size, fp) != -1) {
     if (is_blank(line_buff)) {
       continue;
-    } else 
-        if (is_section(line_buff)) {
+    } else if (is_section(line_buff)) {
       current_section_name = extract_section(line_buff, current_section_name);
+
       if (!is_valid_identifier(current_section_name)) {
         printf("Invalid section name: %s", current_section_name);
         return 1;
@@ -164,44 +182,22 @@ int main(int argc, char **argv) {
           malloc(sizeof(char) * strlen(current_section_name) + 1);
       strcpy(current_section->name, current_section_name);
 
+      current_section->number_of_records = 0;
       current_section->next = NULL;
       current_section->records = NULL;
 
-      printf("Section: %s\n", current_section->name);
+      /* printf("Section: %s\n", current_section->name); */
     } else {
-        struct Record *record = parse_key_value(line_buff);
-        printf("Key: %s, Value: %s\n", record->key, record->value);
+      current_section->number_of_records++;
+      struct Record *current_record = parse_key_value(line_buff);
+      current_section->records =
+          realloc(current_section->records,
+                  sizeof(struct Record) * (current_section->number_of_records));
+
+      current_section->records[current_section->number_of_records - 1] =
+          *current_record;
     }
   }
+  ini_data = ini_data->next;
+  printIniData(ini_data);
 }
-
-/* if (strcmp(current_section, looking_for->section) == 0) { */
-/* } */
-/*       /1* printf("Found section [%s]", current_section); *1/ */
-/*       /1* /2*         while (fscanf(fp, "%s = %s\n", current_key, */
-/*        * current_value) > *1/ */
-/*       /1*  * 0 && *1/ */
-/*       /1*  *2/ *1/ */
-/*       /1* /2*                !is_section(current_key)) { *2/ *1/ */
-
-/*       /1* /2*           if (strcmp(current_key, key) == 0) { *2/ *1/ */
-/*       /1* /2*             printf("Value: %s\n", current_value); *2/ *1/ */
-/*       /1* /2*             return 0; *2/ *1/ */
-/*       /1* /2*           } *2/ *1/ */
-/*       /1* /2*         } *2/ *1/ */
-/*       /1* /2*         printf("Failed to find key %s in section [%s]", key,
- * *1/ */
-/*       /1*  * section); *2/ *1/ */
-/*       /1* /2*         return 1; *2/ *1/ */
-/*       /1* /2*       } *2/ *1/ */
-/*       /1* /2*     } *2/ *1/ */
-/*       /1* printf("Found section [%s]", current_section); *1/ */
-/*       /1* return 0; *1/ */
-/*       /1* } *1/ */
-/*     } */
-/*     printf("Failed to find section [%s]", looking_for->section); */
-/*     fclose(fp); */
-/*     return 1; */
-/*   } */
-/* } */
-/* } */
