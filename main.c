@@ -21,6 +21,12 @@ struct Section {
   int number_of_records;
 };
 
+struct Expression {
+  char *operation;
+  struct Record *record1;
+  struct Record *record2;
+};
+
 void printIniData(struct Section *head) {
   struct Section *current_section = head;
 
@@ -39,17 +45,27 @@ void printIniData(struct Section *head) {
   }
 }
 
-char *find(char *section, char *key, struct Section *head) {
+// If record points to NULL, then section not found
+// If record->key points to NULL, then key not found
+struct Record *find(char *section, char *key, struct Section *head) {
   struct Section *current_section = head;
+  struct Record *record;
 
   while (current_section != NULL) {
     if (strcmp(current_section->name, section) == 0) {
+      record = malloc(sizeof(struct Record));
+      record->key = NULL;
       for (int i = 0; i < current_section->number_of_records; ++i) {
         if (strcmp(current_section->records[i].key, key) == 0) {
-          return current_section->records[i].value;
+          record->key = malloc(sizeof(char) * strlen(key) + 1);
+          record->key = key;
+
+          record->value = malloc(sizeof(char) * strlen(key) + 1);
+          record->value = current_section->records[i].value;
         }
+        return record;
       }
-      return NULL;
+      return record;
     }
     current_section = current_section->next;
   }
@@ -70,12 +86,12 @@ short is_valid_identifier(char *identifier) {
 struct Record *parse_key_value(char *line_buff) {
   struct Record *record = malloc(sizeof(struct Record));
   char *current_key = strtok(line_buff, "=");
-  // Remove trailing whitespace
+
+  // Removing trailing whitespace
   current_key[strlen(current_key) - 1] = '\0';
 
   if (!is_valid_identifier(current_key)) {
-    printf("Invalid key name: %s", current_key);
-    exit(1);
+    return NULL;
   }
 
   record->key = malloc(sizeof(char) * strlen(current_key) + 1);
@@ -129,7 +145,7 @@ struct Lookup *getDataFromArgs(int size, char *argv[]) {
   }
 }
 
-FILE *open_file(char *filename) {
+FILE *openFile(char *filename) {
   FILE *fp;
   fp = fopen(filename, "r");
   if (fp == NULL) {
@@ -139,7 +155,7 @@ FILE *open_file(char *filename) {
   return fp;
 }
 
-short is_section(char *line) {
+short isSection(char *line) {
   ushort end_offset = line[strlen(line) - 1] == '\n' ? 2 : 1;
   return (line[0] == '[' && line[strlen(line) - end_offset] == ']') ? 1 : 0;
 }
@@ -147,7 +163,7 @@ short is_section(char *line) {
 // moves section name extracted from line to section_container
 //          line:        section_container:
 // Example: [abc]\n  ->  abc
-char *extract_section(char *line_buff, char *section_container) {
+char *extractSection(char *line_buff, char *section_container) {
   char *new_section_container =
       realloc(section_container, sizeof(char) * (strlen(line_buff) - 2));
   strncpy(new_section_container, line_buff + 1, strlen(line_buff) - 3);
@@ -155,28 +171,31 @@ char *extract_section(char *line_buff, char *section_container) {
   return new_section_container;
 }
 
-short is_blank(char *line) {
+short isBlankLine(char *line) {
   if (strcmp(line, "\n") == 0 || strcmp(line, "\r\n") == 0) {
     return 1;
   }
   return 0;
 }
 
-struct Section *parse_ini_file(FILE *fp) {
+struct Section *parseIniFile(FILE *fp) {
   struct Section *ini_data = malloc(sizeof(struct Section));
   struct Section *current_section = ini_data;
   char *current_section_name = NULL;
 
   char *line_buff;
   size_t line_buff_size = 0;
+  unsigned int line_number = 1;
+
   while (getline(&line_buff, &line_buff_size, fp) != -1) {
-    if (is_blank(line_buff)) {
+    if (isBlankLine(line_buff)) {
       continue;
-    } else if (is_section(line_buff)) {
-      current_section_name = extract_section(line_buff, current_section_name);
+    } else if (isSection(line_buff)) {
+      current_section_name = extractSection(line_buff, current_section_name);
 
       if (!is_valid_identifier(current_section_name)) {
-        printf("Invalid section name: %s", current_section_name);
+        printf("Invalid section name identifier: %s at line %d\n",
+               current_section_name, line_number);
         exit(1);
       }
 
@@ -194,6 +213,10 @@ struct Section *parse_ini_file(FILE *fp) {
     } else {
       current_section->number_of_records++;
       struct Record *current_record = parse_key_value(line_buff);
+      if (current_record == NULL) {
+        printf("Invalid key identifier at line %d\n", line_number);
+        exit(1);
+      }
       current_section->records =
           realloc(current_section->records,
                   sizeof(struct Record) * (current_section->number_of_records));
@@ -201,21 +224,34 @@ struct Section *parse_ini_file(FILE *fp) {
       current_section->records[current_section->number_of_records - 1] =
           *current_record;
     }
+    line_number++;
   }
   return ini_data->next;
 }
 
+
 int main(int argc, char **argv) {
+  if (argc < 3) {
+    printf("No arguments\n");
+    exit(1);
+  }
 
   struct Lookup *looking_for = getDataFromArgs(argc, argv);
 
-  FILE *fp;
-  fp = open_file(looking_for->filename);
-  struct Section *ini_data = parse_ini_file(fp);
+  FILE *fp = openFile(looking_for->filename);
 
-  char *v = find(looking_for->section, looking_for->key, ini_data);
-  if (v == NULL) {
-    printf("Not found\n");
+  struct Section *ini_data = parseIniFile(fp);
+
+  struct Record *data = find(looking_for->section, looking_for->key, ini_data);
+
+  if (data == NULL) {
+    printf("Failed to find section [%s]\n", looking_for->section);
+    exit(1);
   }
-  printf("%s", v);
+
+  if (data->key == NULL) {
+    printf("Failed to find key \"%s\"\n in section [%s]", looking_for->key,
+           looking_for->section);
+    exit(1);
+  }
 }
