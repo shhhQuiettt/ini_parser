@@ -72,11 +72,11 @@ struct Record *find(char *section, char *key, struct Section *head) {
   return NULL;
 }
 
-short is_proper_char(char c) { return isalnum(c) || c == '-'; }
+short isProperChar(char c) { return isalnum(c) || c == '-'; }
 
-short is_valid_identifier(char *identifier) {
+short isValidIdentifier(char *identifier) {
   for (int i = 0; i < strlen(identifier); i++) {
-    if (!is_proper_char(identifier[i])) {
+    if (!isProperChar(identifier[i])) {
       return 0;
     }
   }
@@ -90,7 +90,7 @@ struct Record *parse_key_value(char *line_buff) {
   // Removing trailing whitespace
   current_key[strlen(current_key) - 1] = '\0';
 
-  if (!is_valid_identifier(current_key)) {
+  if (!isValidIdentifier(current_key)) {
     return NULL;
   }
 
@@ -193,7 +193,7 @@ struct Section *parseIniFile(FILE *fp) {
     } else if (isSection(line_buff)) {
       current_section_name = extractSection(line_buff, current_section_name);
 
-      if (!is_valid_identifier(current_section_name)) {
+      if (!isValidIdentifier(current_section_name)) {
         printf("Invalid section name identifier: %s at line %d\n",
                current_section_name, line_number);
         exit(1);
@@ -229,7 +229,6 @@ struct Section *parseIniFile(FILE *fp) {
   return ini_data->next;
 }
 
-
 int main(int argc, char **argv) {
   if (argc < 3) {
     printf("No arguments\n");
@@ -254,4 +253,7 @@ int main(int argc, char **argv) {
            looking_for->section);
     exit(1);
   }
+
+  printf("[%s].%s = %s\n", looking_for->section, looking_for->key, data->value);
+  return 0;
 }
